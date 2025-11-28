@@ -1,1 +1,102 @@
 # Reproduce
+Agency Choice & Memory — Reproduction Code
+
+This repository contains all analysis scripts and data required to reproduce the results of the manuscript Agency personalizes episodic memories (Li et al.).
+
+It includes:
+
+- Fully reproducible **Python scripts** corresponding to each manuscript results section  
+- **Aligned recall/choice matrices**, event metadata, and shared-event maps  
+- **Permutation tests**, **ISC workflows**, **centrality analyses**, and **temporal-dependency tests**  
+- Robust alignment methods for Free, Yoked, and Passive story paths  
+
+
+Repository Structure
+reproduce/
+│
+├── data/
+│   ├── individual_data/
+│   │   ├── rating/             # *_events.xlsx per subject (adventure/romance)
+│   │   ├── recall_prob/        # recall_allsub.xlsx for Free/Yoked/Passive
+│   │   └── choice_prob/        # choice_allsub.xlsx (generated)
+│   │
+│   ├── overall_data/
+│       ├── adventure_result.xlsx
+│       ├── romance_result.xlsx
+│       └── monthy_map.xlsx     # shared/choice event alignment map
+│
+├── scripts/
+│   ├── 1_agency_did_not_improve_recall_performance.py
+│   ├── 2_agency_magnified_individual_variability_in_recall_and_choice.py
+│   ├── 2.4.1_recall_ISC_choice_included_permutation_tests.py
+│   ├── 2.4.2_recall_ISC_choice_excluded_permutation_tests.py
+│   ├── 2.4.3_choice_ISC_did_not_drive_recall_ISC.py
+│   ├── 3_Event_recall_was_predicted_by_semantic_and_causal_centrality.py
+│   ├── 4_Agency_reduced_the_influence_of_semantic_but_not_causal_centrality_on_recall.py
+│   ├── 5_Agency_introduces_temporal_dependencies_in_memory.py
+│   ├── 6_Greater_memory_divergence_was_associated_with_weaker_semantic_influence.py
+│   ├── 7_consequences_of_having_your_choices_denied.py
+│   ├── free_pairwise_correlation.py
+│   └── (...)
+│
+└── README.md
+
+
+
+---
+
+## Description of Scripts
+
+Each Python script reproduces one major section of the manuscript.
+
+### **1. Recall performance**
+`1_agency_did_not_improve_recall_performance.py`  
+Runs ANOVA comparing Free vs Yoked vs Passive recall.
+
+---
+
+### **2. Individual variability, ISC, and choice behavior**
+
+`2_agency_magnified_individual_variability_in_recall_and_choice.py`  
+Computes subject-level ISC and variability in recall & choice.
+
+**Permutation tests:**
+- `2.4.1_recall_ISC_choice_included_permutation_tests.py` – ISC null including choice events  
+- `2.4.2_recall_ISC_choice_excluded_permutation_tests.py` – ISC null excluding choice events  
+- `2.4.3_choice_ISC_did_not_drive_recall_ISC.py` – Does choice ISC predict recall ISC?
+
+---
+
+### **3. Semantic & causal centrality**
+`3_Event_recall_was_predicted_by_semantic_and_causal_centrality.py`  
+Tests whether event recall correlates with semantic/causal network centrality.
+
+---
+
+### **4. Agency’s effect on semantic influence**
+`4_Agency_reduced_the_influence_of_semantic_but_not_causal_centrality_on_recall.py`  
+Runs two-way and three-way ANOVAs to test semantic vs causal differences.
+
+---
+
+### **5. Temporal dependencies**
+`5_Agency_introduces_temporal_dependencies_in_memory.py`  
+Measures lag-1 prediction effects and temporal autocorrelation in recall.
+
+---
+
+### **6. Memory divergence**
+`6_Greater_memory_divergence_was_associated_with_weaker_semantic_influence.py`  
+Correlates divergence with semantic influence; runs multiple regression models.
+
+---
+
+### **7. Consequences of denied choices**
+`7_consequences_of_having_your_choices_denied.py`  
+Analyzes granted vs denied events, Yoked–Free recall differences, and denied-event forgetting.
+
+---
+
+### **Free pairwise recall correlation**
+`free_pairwise_correlation.py`  
+Computes **all pairwise correlations among Free subjects** over the 64 shared events — a baseline for ISC.
