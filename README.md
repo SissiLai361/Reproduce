@@ -11,36 +11,34 @@ It includes:
 - Robust alignment methods for Free, Yoked, and Passive story paths  
 
 
-Repository Structure
 reproduce/
 │
 ├── data/
-│   ├── individual_data/
-│   │   ├── rating/             # *_events.xlsx per subject (adventure/romance)
-│   │   ├── recall_prob/        # recall_allsub.xlsx for Free/Yoked/Passive
-│   │   └── choice_prob/        # choice_allsub.xlsx (generated)
-│   │
-│   ├── overall_data/
-│       ├── adventure_result.xlsx
-│       ├── romance_result.xlsx
-│       └── monthy_map.xlsx     # shared/choice event alignment map
+│ ├── individual_data/
+│ │ ├── rating/ # *_events.xlsx per subject (adventure/romance)
+│ │ ├── recall_prob/ # recall_allsub.xlsx for Free/Yoked/Passive
+│ │ └── choice_prob/ # choice_allsub.xlsx (generated)
+│ │
+│ ├── overall_data/
+│ ├── adventure_result.xlsx
+│ ├── romance_result.xlsx
+│ └── monthy_map.xlsx # shared/choice event alignment map
 │
 ├── scripts/
-│   ├── 1_agency_did_not_improve_recall_performance.py
-│   ├── 2_agency_magnified_individual_variability_in_recall_and_choice.py
-│   ├── 2.4.1_recall_ISC_choice_included_permutation_tests.py
-│   ├── 2.4.2_recall_ISC_choice_excluded_permutation_tests.py
-│   ├── 2.4.3_choice_ISC_did_not_drive_recall_ISC.py
-│   ├── 3_Event_recall_was_predicted_by_semantic_and_causal_centrality.py
-│   ├── 4_Agency_reduced_the_influence_of_semantic_but_not_causal_centrality_on_recall.py
-│   ├── 5_Agency_introduces_temporal_dependencies_in_memory.py
-│   ├── 6_Greater_memory_divergence_was_associated_with_weaker_semantic_influence.py
-│   ├── 7_consequences_of_having_your_choices_denied.py
-│   ├── free_pairwise_correlation.py
-│   └── (...)
+│ ├── 1_agency_did_not_improve_recall_performance.py
+│ ├── 2_agency_magnified_individual_variability_in_recall_and_choice.py
+│ ├── 2.4.1_recall_ISC_choice_included_permutation_tests.py
+│ ├── 2.4.2_recall_ISC_choice_excluded_permutation_tests.py
+│ ├── 2.4.3_choice_ISC_did_not_drive_recall_ISC.py
+│ ├── 3_Event_recall_was_predicted_by_semantic_and_causal_centrality.py
+│ ├── 4_Agency_reduced_the_influence_of_semantic_but_not_causal_centrality_on_recall.py
+│ ├── 5_Agency_introduces_temporal_dependencies_in_memory.py
+│ ├── 6_Greater_memory_divergence_was_associated_with_weaker_semantic_influence.py
+│ ├── 7_consequences_of_having_your_choices_denied.py
+│ ├── free_pairwise_correlation.py
+│ └── (...)
 │
 └── README.md
-
 
 
 ---
