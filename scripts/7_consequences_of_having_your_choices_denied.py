@@ -8,7 +8,9 @@ import pandas as pd
 from pathlib import Path
 from scipy.stats import ttest_ind, pearsonr
 
+
 # ======================= Paths =======================
+
 base_overall = Path("..") / "data" / "overall_data"
 base_indiv   = Path("..") / "data" / "individual_data"
 
@@ -23,10 +25,11 @@ ROM_YOKE_SHEET = "yoke53"
 
 
 # ======================= Small helpers =======================
+
 def parse_num_vec(s):
     """
-    Parse comma-separated strings like '1,0,1' into a float array.
-    Returns empty array for NaN/empty cells.
+    Parse a comma-separated string like '1,0,1' into a float array.
+    Returns an empty array for NaN / blank cells.
     """
     if pd.isna(s):
         return np.array([], float)
@@ -49,11 +52,13 @@ def parse_num_vec(s):
     return np.asarray(vals, float)
 
 
-def yoke_to_free_id(yoke_sid: str, free_cols: list[str]) -> str | None:
+def yoke_to_free_id(yoke_sid, free_cols):
     """
-    Map yoke ID like 'to23_sub5001' to free ID like 'sub23_10xx' or 'sub23_40xx':
-      - extract path number from 'toXX'
-      - pick free column whose name starts with 'subXX_'
+    Map yoke ID like 'to23_sub5001' → free ID like 'sub23_10xx' or 'sub23_40xx'.
+
+    Logic:
+      - extract 23 from 'to23_sub5001'
+      - find first free column that starts with 'sub23_'
     """
     m = re.fullmatch(r"to(\d+)_sub\d+", str(yoke_sid).strip())
     if not m:
@@ -67,24 +72,49 @@ def yoke_to_free_id(yoke_sid: str, free_cols: list[str]) -> str | None:
     return matches[0]
 
 
-# ======================= Per-yoked-subject summary =======================
-def process_story(story_label: str,
-                  result_xls: Path,
-                  yoke_sheet: str,
-                  free_recall_xls: Path) -> pd.DataFrame:
+def _safe_corr(x, y):
     """
-    Build a yoked-subject summary table for one story.
+    Pearson r with NaN / length checks.
+    Returns (r, p, n_used); r and p are NaN if n_used < 3 or any vector is constant.
+    """
+    x = np.asarray(x, float).ravel()
+    y = np.asarray(y, float).ravel()
+    L = min(len(x), len(y))
+    if L < 3:
+        return np.nan, np.nan, L
 
-      index: yoke_subj  (e.g., 'to23_sub5001')
+    x = x[:L]
+    y = y[:L]
 
-      columns:
-        free_subj
-        pct_granted                 # proportion of choices granted
-        yoke_granted_mean           # Yoked recall for granted events
-        yoke_denied_mean            # Yoked recall for denied events
-        free_granted_mean           # Free recall at those granted events
-        free_denied_mean            # Free recall at those denied events
-        tendency_r                  # r(wn, yoke recall) across choice events
+    mask = np.isfinite(x) & np.isfinite(y)
+    n = int(mask.sum())
+    if n < 3:
+        return np.nan, np.nan, n
+
+    x = x[mask]
+    y = y[mask]
+    if np.allclose(x, x[0]) or np.allclose(y, y[0]):
+        return np.nan, np.nan, n
+
+    r, p = pearsonr(x, y)
+    return float(r), float(p), n
+
+
+# ======================= Per-yoked-subject summary =======================
+
+def process_story(story_label, result_xls, yoke_sheet, free_recall_xls):
+    """
+    Build a yoked-subject summary table.
+
+    index: yoke_subj (e.g., 'to23_sub5001')
+    columns:
+      free_subj
+      pct_granted
+      yoke_granted_mean
+      yoke_denied_mean
+      free_granted_mean
+      free_denied_mean
+      tendency_r  (corr between wn and yoked recall)
     """
     df_res = pd.read_excel(result_xls, sheet_name=yoke_sheet)
     df_res.columns = [str(c).strip().lower() for c in df_res.columns]
@@ -105,8 +135,8 @@ def process_story(story_label: str,
         x = x[np.isfinite(x)]
         return float(x.mean()) if x.size else np.nan
 
-    def safe_corr(x, y):
-        """Within-subject correlation r(wn, yoke recall)."""
+    def simple_corr(x, y):
+        """Within-subject correlation r(wn, yoke recall) for one subject."""
         x = np.asarray(x, float)
         y = np.asarray(y, float)
         mask = np.isfinite(x) & np.isfinite(y)
@@ -126,7 +156,7 @@ def process_story(story_label: str,
         rcl_vec  = parse_num_vec(row["rcl"])
         inds_vec = parse_num_vec(row["inds"]).astype(int)
 
-        # Align lengths across wn, recall, event indices
+        # Align lengths across wn, recall, indices
         L = min(len(wn_vec), len(rcl_vec), len(inds_vec))
         if L == 0:
             continue
@@ -138,7 +168,7 @@ def process_story(story_label: str,
             continue
         wn_vec, rcl_vec, inds_vec = wn_vec[mask_valid], rcl_vec[mask_valid], inds_vec[mask_valid]
 
-        # Map yoked subject to its free counterpart
+        # Map yoked subject → free subject
         free_sid = yoke_to_free_id(yoke_sid, free_cols)
         if free_sid is None or free_sid not in R_free.columns:
             print(f"{story_label}: cannot map yoke {yoke_sid} to free; skipping")
@@ -146,7 +176,7 @@ def process_story(story_label: str,
 
         free_full = pd.to_numeric(R_free[free_sid], errors="coerce").to_numpy()
 
-        # Use inds as indices into the free subject's recall vector
+        # Use indices into free recall
         valid_idx = (inds_vec >= 0) & (inds_vec < len(free_full))
         if not np.any(valid_idx):
             print(f"{story_label}: {yoke_sid}/{free_sid} has no valid indices; skipping")
@@ -179,7 +209,7 @@ def process_story(story_label: str,
             "yoke_denied_mean":  safe_mean(yoke_deny_vals),
             "free_granted_mean": safe_mean(free_grant_vals),
             "free_denied_mean":  safe_mean(free_deny_vals),
-            "tendency_r":        safe_corr(wn_vec, rcl_vec),
+            "tendency_r":        simple_corr(wn_vec, rcl_vec),
         })
 
     if not rows_out:
@@ -190,11 +220,13 @@ def process_story(story_label: str,
 
 
 # ======================= Build summaries for both stories =======================
+
 adv_df = process_story("Adventure", ADV_RESULT_XLS, ADV_YOKE_SHEET, ADV_FREE_RECALL)
 rom_df = process_story("Romance",   ROM_RESULT_XLS, ROM_YOKE_SHEET, ROM_FREE_RECALL)
 
 
 # ======================= 7.1 Denied vs Granted =======================
+
 print(
     "7.1 Having one’s agency denied can have unique memory effects at local choice "
     "events: one’s memory for the denied choice events is selectively reduced "
@@ -202,10 +234,7 @@ print(
 )
 
 def s7_1_denied_effect(df, label):
-    """
-    7.1: Compare denied-event recall:
-      Yoked denied vs Free denied (two-sample t-test).
-    """
+    """Compare denied-event recall: Yoked denied vs Free denied (two-sample t-test)."""
     if df is None or df.empty:
         print(f"{label}: no valid data for 7.1\n")
         return
@@ -229,18 +258,63 @@ s7_1_denied_effect(adv_df, "Adventure")
 s7_1_denied_effect(rom_df, "Romance")
 
 
-# ============================================================
-# 7.2 %Granted predicting tendency to forget denied events
-# ============================================================
+# ======================= 7.2.1: %Granted predicting encoding measures =======================
+
+print(
+    "7.2.1 The percentage of choices granted to Yoked participants was not predictive "
+    "of semantic or neighbor encoding effects on memory across the two stories.\n"
+)
+
+def run_7_2_1(story_label, result_xls, yoke_sheet):
+    """
+    7.2.1:
+      Correlate % choices granted with:
+        - semantic centrality effect on memory (sem-ef)
+        - neighbor encoding effect (nghb-ef)
+    Uses only the story-level yoke sheet.
+    """
+    df_yoke = pd.read_excel(result_xls, sheet_name=yoke_sheet)
+    df_yoke.columns = [str(c).strip().lower() for c in df_yoke.columns]
+
+    # % granted column differs by file (prcnt_want vs pct_granted)
+    if "prcnt_want" in df_yoke.columns:
+        pg = pd.to_numeric(df_yoke["prcnt_want"], errors="coerce")
+    elif "pct_granted" in df_yoke.columns:
+        pg = pd.to_numeric(df_yoke["pct_granted"], errors="coerce")
+    else:
+        print(f"{story_label}: no %granted column (prcnt_want/pct_granted); skipping 7.2.1\n")
+        return
+
+    sem  = pd.to_numeric(df_yoke.get("sem-ef",  np.nan), errors="coerce")
+    nghb = pd.to_numeric(df_yoke.get("nghb-ef", np.nan), errors="coerce")
+
+    print(story_label)
+
+    # %Granted vs semantic effect
+    r, p, n = _safe_corr(pg, sem)
+    print(f"  %Granted vs semantic effect (sem-ef):  r({n-2 if n >= 3 else 'N/A'}) = {r:.3f}, p = {p:.3f}")
+
+    # %Granted vs neighbor encoding effect
+    r, p, n = _safe_corr(pg, nghb)
+    print(f"  %Granted vs neighbor effect (nghb-ef): r({n-2 if n >= 3 else 'N/A'}) = {r:.3f}, p = {p:.3f}\n")
+
+
+run_7_2_1("Adventure", ADV_RESULT_XLS, ADV_YOKE_SHEET)
+run_7_2_1("Romance",   ROM_RESULT_XLS, ROM_YOKE_SHEET)
+
+
+# ======================= 7.2.2: %Granted predicting tendency_r =======================
+
 print(
     "7.2.2 Higher percentage of choices granted predicted greater individual "
     "tendency to forget the choice-denied events.\n"
 )
 
-def run_7_2(story_label, df):
+def run_7_2_2(story_label, df):
     """
-    7.2: Correlate % choices granted with tendency_r
-         (individual tendency to recall granted events more than denied ones).
+    7.2.2:
+      Correlate % choices granted (pct_granted) with tendency_r
+      (subject-specific correlation between wn and recall).
     """
     if df is None or df.empty:
         print(f"{story_label}: missing data\n")
@@ -258,5 +332,5 @@ def run_7_2(story_label, df):
     print(f"{story_label}: r({len(pg)-2}) = {r:.3f}, p = {p:.3f}\n")
 
 
-run_7_2("Adventure", adv_df)
-run_7_2("Romance",   rom_df)
+run_7_2_2("Adventure", adv_df)
+run_7_2_2("Romance",   rom_df)
