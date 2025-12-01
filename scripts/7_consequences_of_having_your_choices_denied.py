@@ -303,6 +303,10 @@ run_7_2_1("Adventure", ADV_RESULT_XLS, ADV_YOKE_SHEET)
 run_7_2_1("Romance",   ROM_RESULT_XLS, ROM_YOKE_SHEET)
 
 
+
+
+
+
 # ======================= 7.2.2: %Granted predicting tendency_r =======================
 
 print(
