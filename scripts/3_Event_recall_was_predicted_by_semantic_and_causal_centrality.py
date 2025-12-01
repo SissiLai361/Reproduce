@@ -4,7 +4,7 @@ See manuscript results section: Event recall was predicted by semantic and causa
 
 import numpy as np
 import pandas as pd
-from scipy.stats import ttest_1samp, norm
+from scipy.stats import ttest_1samp
 from pathlib import Path
 
 # ---------- Load paths ----------
@@ -25,34 +25,35 @@ pull = lambda df, cond, col: df.loc[df.cond.eq(cond), col].dropna().astype(float
 fisher = lambda x: np.arctanh(np.clip(np.asarray(x, float), -0.999999, 0.999999))
 invf   = lambda z: np.tanh(np.asarray(z, float))
 
-def mean_raw_and_backtransformed(x):
-    """Return mean in raw space and mean after Fisher-z back-transform."""
-    x = np.asarray(x, float)
-    x = x[np.isfinite(x)]
-    if x.size == 0:
-        return np.nan, np.nan
-    m_raw = float(np.mean(x))
-    m_back = float(invf(np.mean(fisher(x))))
-    return m_raw, m_back
-
 def fisher_one_sample(x):
     """
-    One-sample test in Fisher-z space (vs 0).
-    Returns z-statistic, df, p-value, raw mean, back-transformed mean.
+    One-sample t-test in Fisher-z space (vs 0), analogous to correlation tests.
+    Returns:
+      mean_z       - mean Fisher z
+      mean_back    - tanh(mean_z), back-transformed mean r
+      t_z          - t-statistic in z space
+      df           - degrees of freedom
+      p_z          - p-value from t-test
     """
+    x = np.asarray(x, float)
+    x = x[np.isfinite(x)]
+    if x.size < 2:
+        return np.nan, np.nan, np.nan, np.nan, np.nan
+
     z = fisher(x)
     z = z[np.isfinite(z)]
     n = z.size
     if n < 2:
         return np.nan, np.nan, np.nan, np.nan, np.nan
 
-    m = np.mean(z)
-    se = np.std(z, ddof=1) / np.sqrt(n)
-    zstat = 0.0 if se == 0 else m / se
-    p = 2 * norm.sf(abs(zstat))
+    # t-test on z vs 0
+    t_z, p_z = ttest_1samp(z, 0.0)
 
-    mean_raw, mean_back = mean_raw_and_backtransformed(x)
-    return float(zstat), float(n - 1), float(p), mean_raw, mean_back
+    mean_z   = float(np.mean(z))
+    mean_back = float(invf(mean_z))
+    df       = n - 1
+
+    return mean_z, mean_back, float(t_z), float(df), float(p_z)
 
 # ============================================================
 # 3.1 Semantic centrality effects
@@ -61,23 +62,29 @@ def fisher_one_sample(x):
 print("3.1 For both stories, semantic centrality significantly predicted recall (one-sample tests against zero).\n")
 
 for story, fp in FILES.items():
-    df = pd.read_excel(fp, usecols=["cond", "idv-sem-ef"])
+    # now use sem-ef instead of idv-sem-ef
+    df = pd.read_excel(fp, usecols=["cond", "sem-ef"])
     print(f"{story} — Semantic")
 
     for c in CONDS:
-        s = pull(df, c, "idv-sem-ef")
+        s = pull(df, c, "sem-ef")
         n = len(s)
+
+        if n < 2:
+            continue
 
         # Raw-space test
         t_raw, p_raw = ttest_1samp(s, 0)
-        mean_raw = float(np.mean(s)) if n > 0 else np.nan
+        mean_raw = float(np.mean(s))
 
-        # Fisher z test
-        zstat, df_z, p_z, m_raw_f, m_back = fisher_one_sample(s)
+        # Fisher z t-test
+        mean_z, mean_back, t_z, df_z, p_z = fisher_one_sample(s)
 
         print(f"  {NAME[c]}:")
         print(f"    Raw stats:        mean={mean_raw:.3f}, t({n-1})={t_raw:.3f}, p={p_raw:.3f}")
-        print(f"    Fisher Transform: mean_z={m_back:.3f}, z({int(df_z)})={zstat:.3f}, p={p_z:.3f}")
+        print(f"    Fisher Transform: mean_z={mean_z:.3f}, t({int(df_z)})={t_z:.3f}, p={p_z:.3f}")
+        # If you want to also see the back-transformed mean r:
+        # print(f"    (back-transformed mean r = {mean_back:.3f})")
 
     print()
 
@@ -88,22 +95,27 @@ for story, fp in FILES.items():
 print("3.2 For both stories, causal centrality significantly predicted recall (one-sample tests against zero).\n")
 
 for story, fp in FILES.items():
-    df = pd.read_excel(fp, usecols=["cond", "idv-caus-ef"])
+    # now use caus-ef instead of idv-caus-ef
+    df = pd.read_excel(fp, usecols=["cond", "caus-ef"])
     print(f"{story} — Causal")
 
     for c in CONDS:
-        s = pull(df, c, "idv-caus-ef")
+        s = pull(df, c, "caus-ef")
         n = len(s)
+
+        if n < 2:
+            continue
 
         # Raw-space test
         t_raw, p_raw = ttest_1samp(s, 0)
-        mean_raw = float(np.mean(s)) if n > 0 else np.nan
+        mean_raw = float(np.mean(s))
 
-        # Fisher z test
-        zstat, df_z, p_z, m_raw_f, m_back = fisher_one_sample(s)
+        # Fisher z t-test
+        mean_z, mean_back, t_z, df_z, p_z = fisher_one_sample(s)
 
         print(f"  {NAME[c]}:")
         print(f"    Raw stats:        mean={mean_raw:.3f}, t({n-1})={t_raw:.3f}, p={p_raw:.3f}")
-        print(f"    Fisher Transform: mean_z={m_back:.3f}, z({int(df_z)})={zstat:.3f}, p={p_z:.3f}")
+        print(f"    Fisher Transform: mean_z={mean_z:.3f}, t({int(df_z)})={t_z:.3f}, p={p_z:.3f}")
+        # print(f"    (back-transformed mean r = {mean_back:.3f})")
 
     print()
